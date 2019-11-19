@@ -31,7 +31,7 @@ func check(err error) {
 
 func formatCommit(c *object.Commit) string {
 	return "v0.0.0-" +
-		c.Author.When.UTC().Format("20060102150405") +
+		c.Committer.When.UTC().Format("20060102150405") +
 		"-" +
 		c.Hash.String()[:12]
 }
