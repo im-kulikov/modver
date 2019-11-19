@@ -26,7 +26,6 @@ func check(err error) {
 	if err == nil {
 		return
 	}
-	panic(err)
 	halt(err.Error())
 }
 
