@@ -4,9 +4,8 @@ env_files:
   github_token: ~/.config/goreleaser/github_token
 before:
   hooks:
-    # you may remove this if you don't use vgo
     - go mod tidy
-    # you may remove this if you don't need go generate
+    - go mod vendor
     - go generate ./...
 builds:
 - env:
@@ -16,6 +15,10 @@ builds:
     - darwin
   goarch:
     - amd64
+  flags:
+    - -mod=vendor
+  ldflags:
+    - -w -s -X main.version={{.Version}} -X main.build={{ time "2006-01-02T15:04:05" }}
 archives:
 - replacements:
     darwin: macos
