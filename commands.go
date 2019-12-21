@@ -1,23 +1,18 @@
 package main
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
-	"gopkg.in/src-d/go-git.v4/plumbing/storer"
-
-	"github.com/urfave/cli/v2"
+	"github.com/spf13/viper"
 	"gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	"gopkg.in/src-d/go-git.v4/plumbing/object"
+	"gopkg.in/src-d/go-git.v4/plumbing/storer"
 )
 
 const (
@@ -33,8 +28,6 @@ const (
 
 func (e constError) Error() string { return string(e) }
 
-func newError(err error) error { return cli.NewExitError(err.Error(), 2) }
-
 func formatCommit(c interface{}) string {
 	switch t := c.(type) {
 	case *plumbing.Reference:
@@ -49,24 +42,21 @@ func formatCommit(c interface{}) string {
 	}
 }
 
-func latestRevision(c *cli.Context) (err error) {
+func latestRevision() (err error) {
 	var (
-		path string
 		tmp  string
 		res  interface{}
 		lc   *object.Commit
 		repo *git.Repository
+		ctx  = newGracefulContext()
+		path = viper.GetString("path")
 	)
 
-	if !c.Args().Present() {
-		_ = cli.ShowAppHelp(c)
-		return newError(errPathNotPassed)
+	if path == "" {
+		return errPathNotPassed
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer func() {
-		cancel()
-
 		if err := os.RemoveAll(tmp); err != nil && tmp != "" {
 			fmt.Println("Removing temp: ", err.Error())
 		}
@@ -83,25 +73,15 @@ func latestRevision(c *cli.Context) (err error) {
 		}
 	}()
 
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-
-	go func() {
-		<-ch
-		cancel()
-	}()
-
-	path = c.Args().First()
-
 	if _, err = os.Stat(path); err == nil {
 		if repo, err = git.PlainOpen(path); err != nil {
-			return newError(err)
+			return err
 		}
 	} else {
 		sha := sha256.Sum256([]byte(path))
 
 		if tmp, err = ioutil.TempDir("", hex.EncodeToString(sha[:])); err != nil {
-			return newError(err)
+			return err
 		}
 
 		var u *url.URL
@@ -118,11 +98,11 @@ func latestRevision(c *cli.Context) (err error) {
 			Depth:         1,
 			Progress:      os.Stdout,
 			Tags:          git.AllTags,
-			ReferenceName: plumbing.NewBranchReferenceName(c.String(branchFlag)),
+			ReferenceName: plumbing.NewBranchReferenceName(viper.GetString(branchFlag)),
 		})
 
 		if err != nil {
-			return newError(err)
+			return err
 		}
 	}
 
@@ -138,7 +118,7 @@ func latestRevision(c *cli.Context) (err error) {
 		return err
 	} else if lc, err = iter.Next(); err != nil {
 		return err
-	} else if c.IsSet(commitFlag) {
+	} else if viper.GetBool(commitFlag) {
 		res = lc
 		return
 	} else if tags, err = repo.Tags(); err != nil {

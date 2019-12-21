@@ -1,40 +1,80 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"os"
 
-	"github.com/urfave/cli/v2"
+	"github.com/pkg/errors"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
+type empty int
+
+const (
+	devNull = empty(0)
+	about   = "\nSimple program to receive latest version (for go.mod) of passed package.\nVersion %s (%s).\n"
+)
+
+// Read returns nothing
+func (empty) Read([]byte) (int, error) { return 0, io.EOF }
+
+func initSettings() {
+	// flags setup:
+	flags := pflag.NewFlagSet("commandline", pflag.ExitOnError)
+	flags.SortFlags = false
+
+	flags.Bool("verbose", false, "verbose")
+	help := flags.BoolP("help", "h", false, "show help")
+	ver := flags.BoolP("version", "v", false, "show version")
+
+	flags.Bool(commitFlag, false, "display latest commit version (for example v0.0.0-<hash>-<date>)")
+	flags.String(branchFlag, "master", "use passed branch to receive version (for remote repos only)")
+
+	// set prefers:
+	viper.Set("app.name", "modver")
+	viper.Set("app.author", "Evgeniy Kulikov <im@kulikov.im>")
+	viper.Set("app.version", version+"("+build+")")
+
+	if err := viper.BindPFlags(flags); err != nil {
+		panic(err)
+	}
+
+	if err := viper.ReadConfig(devNull); err != nil {
+		panic(err)
+	}
+
+	if err := flags.Parse(os.Args); err != nil {
+		panic(err)
+	}
+
+	switch {
+	case help != nil && *help:
+		fmt.Printf(about, version, build)
+		fmt.Println("modver [global options] {repo-path or url}")
+		flags.PrintDefaults()
+		os.Exit(0)
+	case ver != nil && *ver:
+		fmt.Printf(about, version, build)
+		os.Exit(0)
+	}
+
+	if args := flags.Args(); len(args) >= 2 {
+		viper.Set("path", args[1])
+	}
+}
+
 func main() {
-	app := cli.NewApp()
-	app.Authors = []*cli.Author{
-		{
-			Name:  "Evgeniy Kulikov",
-			Email: "im@kulikov.im",
-		},
-	}
+	initSettings()
 
-	app.Flags = []cli.Flag{
-		&cli.BoolFlag{
-			Name:  commitFlag,
-			Usage: "display latest commit version (for example v0.0.0-<hash>-<date>)",
-		},
-
-		&cli.StringFlag{
-			Value: "master",
-			Name:  branchFlag,
-			Usage: "use passed branch to receive version (for remote repos only)",
-		},
-	}
-
-	app.Usage = "Simple program to receive latest version (for go.mod) of passed package."
-	app.UsageText = "modver [global options] {repo-path or url}"
-	app.Version = fmt.Sprintf("%s (%s)", version, build)
-	app.Action = latestRevision
-	if err := app.Run(os.Args); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, err)
-		cli.OsExiter(1)
+	if err := latestRevision(); err == nil || errors.Cause(err) == context.Canceled {
+		os.Exit(0)
+	} else if !viper.GetBool("verbose") {
+		fmt.Println(err)
+		os.Exit(2)
+	} else {
+		panic(err)
 	}
 }
