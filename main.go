@@ -30,6 +30,8 @@ func initSettings() {
 	help := flags.BoolP("help", "h", false, "show help")
 	ver := flags.BoolP("version", "v", false, "show version")
 
+	update := flags.BoolP("update", "u", false, "fetch and update current modules")
+
 	flags.Bool(commitFlag, false, "display latest commit version (for example v0.0.0-<hash>-<date>)")
 	flags.String(branchFlag, "master", "use passed branch to receive version (for remote repos only)")
 
@@ -58,6 +60,9 @@ func initSettings() {
 		os.Exit(0)
 	case ver != nil && *ver:
 		fmt.Printf(about, version, build)
+		os.Exit(0)
+	case update != nil && *update:
+		updateCommand()
 		os.Exit(0)
 	}
 

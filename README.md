@@ -18,6 +18,7 @@ modver [global options] {repo-path or url}
       --verbose         verbose
   -h, --help            show help
   -v, --version         show version
+  -u, --update          fetch and update current modules
       --commit          display latest commit version (for example v0.0.0-<hash>-<date>)
       --branch string   use passed branch to receive version (for remote repos only) (default "master")
 ```
@@ -66,4 +67,12 @@ Counting objects: 100% (80356/80356), done.
 Compressing objects: 100% (38577/38577), done.
 Total 80356 (delta 57743), reused 57903 (delta 40144), pack-reused 0
 go.mod version: v0.0.0-20150223214927-a91c2e0d2d19
+
+# Display updates for local module:
+$ modver -u /path/to/modver
+github.com/pkg/errors v0.9.1 // v0.8.1 => v0.9.1
+github.com/spf13/pflag v1.0.5 // v1.0.3 => v1.0.5
+github.com/spf13/viper v1.6.2 // v1.6.1 => v1.6.2
+golang.org/x/mod v0.2.0
+gopkg.in/src-d/go-git.v4 v4.13.1
 ```
