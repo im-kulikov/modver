@@ -22,15 +22,22 @@ const (
 func (empty) Read([]byte) (int, error) { return 0, io.EOF }
 
 func initSettings() {
+	var (
+		h, v  bool
+		u, dr bool
+	)
+
 	// flags setup:
 	flags := pflag.NewFlagSet("commandline", pflag.ExitOnError)
 	flags.SortFlags = false
 
 	flags.Bool("verbose", false, "verbose")
-	help := flags.BoolP("help", "h", false, "show help")
-	ver := flags.BoolP("version", "v", false, "show version")
 
-	update := flags.BoolP("update", "u", false, "fetch and update current modules")
+	flags.BoolVarP(&h, "help", "h", false, "show help")
+	flags.BoolVarP(&v, "version", "v", false, "show version")
+
+	flags.BoolVarP(&u, "update", "u", false, "fetch and update current modules")
+	flags.BoolVar(&dr, "dry-run", false, "only check updates for current modules (use with -u / --update)")
 
 	flags.Bool(commitFlag, false, "display latest commit version (for example v0.0.0-<hash>-<date>)")
 	flags.String(branchFlag, "master", "use passed branch to receive version (for remote repos only)")
@@ -53,21 +60,24 @@ func initSettings() {
 	}
 
 	switch {
-	case help != nil && *help:
+	case h:
 		fmt.Printf(about, version, build)
 		fmt.Println("modver [global options] {repo-path or url}")
 		flags.PrintDefaults()
 		os.Exit(0)
-	case ver != nil && *ver:
+	case v:
 		fmt.Printf(about, version, build)
 		os.Exit(0)
-	case update != nil && *update:
-		updateCommand()
+	case u:
+		updateCommand(dr)
+
 		os.Exit(0)
 	}
 
 	if args := flags.Args(); len(args) >= 2 {
-		viper.Set("path", args[1])
+		viper.SetDefault("path", args[1])
+	} else {
+		viper.SetDefault("path", "./")
 	}
 }
 

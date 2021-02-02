@@ -19,6 +19,7 @@ modver [global options] {repo-path or url}
   -h, --help            show help
   -v, --version         show version
   -u, --update          fetch and update current modules
+      --dry-run         only check updates for current modules (use with -u / --update)
       --commit          display latest commit version (for example v0.0.0-<hash>-<date>)
       --branch string   use passed branch to receive version (for remote repos only) (default "master")
 ```
